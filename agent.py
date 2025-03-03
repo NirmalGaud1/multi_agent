@@ -120,7 +120,7 @@ async def main_workflow(research_goal: ResearchGoal):
 
 def display_hypotheses(hypotheses: List[Hypothesis]):
     for i, hypothesis in enumerate(hypotheses):
-        st.write(f"### Hypothesis {i + 1}")
+        st.write(f"Hypothesis {i + 1}")
         st.write(f"**Content:** {hypothesis.content}")
         st.write(f"**Novelty Score:** {hypothesis.novelty_score}")
         st.write(f"**Feasibility Score:** {hypothesis.feasibility_score}")
@@ -132,7 +132,7 @@ def main():
     st.write("Enter your research goal and constraints to generate and rank hypotheses.")
 
     # Input fields
-    goal = st.text_input("Research Goal", "Explore the biological mechanisms of ALS.")
+    goal = st.text_input("Research Goal", "Explore the ethical implications of AI in autonomous vehicles.")
 
     # Dropdown for safety level
     safety_level = st.selectbox(
@@ -168,7 +168,7 @@ def main():
         try:
             ranked_hypotheses = asyncio.run(main_workflow(research_goal))
             if ranked_hypotheses:
-                st.write("### Ranked Hypotheses")
+                st.write("Ranked Hypotheses")
                 display_hypotheses(ranked_hypotheses)
             else:
                 st.warning("No hypotheses generated. Please check your input and try again.")
