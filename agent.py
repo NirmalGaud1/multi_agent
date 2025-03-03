@@ -4,10 +4,8 @@ import asyncio
 from typing import List, Dict, Any
 from dataclasses import dataclass
 
-# Hardcoded API key (replace with your actual key)
 API_KEY = "AIzaSyA-9-lTQTWdNM43YdOXMQwGKDy0SrMwo6c"
 
-# Configure the generative model
 def configure_generative_model(api_key):
     try:
         genai.configure(api_key=api_key)
@@ -16,7 +14,6 @@ def configure_generative_model(api_key):
         st.error(f"Error configuring the generative model: {e}")
         return None
 
-# Initialize the generative model
 model = configure_generative_model(API_KEY)
 if not model:
     st.stop()
@@ -147,7 +144,7 @@ def main():
         try:
             ranked_hypotheses = asyncio.run(main_workflow(research_goal))
             if ranked_hypotheses:
-                st.write("### Ranked Hypotheses")
+                st.write("Ranked Hypotheses")
                 display_hypotheses(ranked_hypotheses)
             else:
                 st.warning("No hypotheses generated. Please check your input and try again.")
