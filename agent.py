@@ -29,7 +29,9 @@ class ResearchGoal:
 @dataclass
 class Hypothesis:
     id: str
-    content: str
+    aim: str
+    objectives: List[str]
+    algorithm: str
     novelty_score: float
     feasibility_score: float
     safety_score: float
@@ -42,18 +44,38 @@ class ResearchOverview:
 class GenerationAgent:
     async def generate_hypotheses(self, research_goal: ResearchGoal) -> List[Hypothesis]:
         try:
-            prompt = f"Generate novel hypotheses for: {research_goal.goal}. Constraints: {research_goal.constraints}. Preferences: {research_goal.preferences}."
+            # Construct the prompt to include aim, objectives, and algorithm
+            prompt = (
+                f"Generate hypotheses for: {research_goal.goal}. "
+                f"Constraints: {research_goal.constraints}. "
+                f"Preferences: {research_goal.preferences}. "
+                "For each hypothesis, provide: "
+                "1. Aim: A clear aim of the hypothesis. "
+                "2. Objectives: A list of 2-3 objectives. "
+                "3. Algorithm: A brief description of the proposed algorithm or methodology. "
+                "Format the output as a structured list."
+            )
             response = model.generate_content(prompt)
             hypotheses = []
-            for i, idea in enumerate(response.candidates[0].content.parts):
-                hypothesis = Hypothesis(
-                    id=f"hypothesis_{i}",
-                    content=idea.text,
-                    novelty_score=0.8,
-                    feasibility_score=0.7,
-                    safety_score=0.9
-                )
-                hypotheses.append(hypothesis)
+            for i, part in enumerate(response.candidates[0].content.parts):
+                text = part.text
+                # Parse the generated text to extract aim, objectives, and algorithm
+                try:
+                    aim = text.split("Aim: ")[1].split("\n")[0].strip()
+                    objectives = text.split("Objectives: ")[1].split("\n")[0].strip().split(", ")
+                    algorithm = text.split("Algorithm: ")[1].split("\n")[0].strip()
+                    hypothesis = Hypothesis(
+                        id=f"hypothesis_{i}",
+                        aim=aim,
+                        objectives=objectives,
+                        algorithm=algorithm,
+                        novelty_score=0.8,
+                        feasibility_score=0.7,
+                        safety_score=0.9
+                    )
+                    hypotheses.append(hypothesis)
+                except Exception as e:
+                    st.error(f"Error parsing hypothesis {i}: {e}")
             context_memory["hypotheses"] = hypotheses
             return hypotheses
         except Exception as e:
@@ -65,7 +87,10 @@ class ReflectionAgent:
         reviewed_hypotheses = []
         for hypothesis in hypotheses:
             try:
-                prompt = f"Review this hypothesis: {hypothesis.content}. Assess novelty, feasibility, and safety."
+                prompt = (
+                    f"Review this hypothesis: Aim: {hypothesis.aim}, Objectives: {hypothesis.objectives}, "
+                    f"Algorithm: {hypothesis.algorithm}. Assess novelty, feasibility, and safety."
+                )
                 response = model.generate_content(prompt)
                 review = response.candidates[0].content.parts[0].text
                 hypothesis.novelty_score = 0.8
@@ -92,7 +117,12 @@ class RankingAgent:
         return ranked_hypotheses
 
     def _simulate_match(self, h1: Hypothesis, h2: Hypothesis) -> Hypothesis:
-        prompt = f"Compare these hypotheses: 1) {h1.content} 2) {h2.content}. Which is better?"
+        prompt = (
+            f"Compare these hypotheses: "
+            f"1) Aim: {h1.aim}, Objectives: {h1.objectives}, Algorithm: {h1.algorithm}. "
+            f"2) Aim: {h2.aim}, Objectives: {h2.objectives}, Algorithm: {h2.algorithm}. "
+            "Which is better?"
+        )
         response = model.generate_content(prompt)
         return h1 if response.candidates[0].content.parts[0].text == "1" else h2
 
@@ -121,12 +151,11 @@ async def main_workflow(research_goal: ResearchGoal):
 def display_hypotheses(hypotheses: List[Hypothesis]):
     for i, hypothesis in enumerate(hypotheses):
         st.write(f"### Hypothesis {i + 1}")
-        st.write(f"**Aim:** To explore the ethical implications of AI in autonomous vehicles.")
+        st.write(f"**Aim:** {hypothesis.aim}")
         st.write(f"**Objectives:**")
-        st.write("- Identify key ethical dilemmas in AI-driven autonomous vehicles.")
-        st.write("- Propose novel solutions to address safety and ethical concerns.")
-        st.write("- Evaluate the feasibility and societal impact of proposed solutions.")
-        st.write(f"**Content:** {hypothesis.content}")
+        for obj in hypothesis.objectives:
+            st.write(f"- {obj}")
+        st.write(f"**Algorithm:** {hypothesis.algorithm}")
         st.write(f"**Novelty Score:** {hypothesis.novelty_score}")
         st.write(f"**Feasibility Score:** {hypothesis.feasibility_score}")
         st.write(f"**Safety Score:** {hypothesis.safety_score}")
