@@ -122,9 +122,6 @@ def display_hypotheses(hypotheses: List[Hypothesis]):
     for i, hypothesis in enumerate(hypotheses):
         st.write(f"### Hypothesis {i + 1}")
         st.write(f"**Content:** {hypothesis.content}")
-        st.write(f"**Novelty Score:** {hypothesis.novelty_score}")
-        st.write(f"**Feasibility Score:** {hypothesis.feasibility_score}")
-        st.write(f"**Safety Score:** {hypothesis.safety_score}")
         st.write("---")
 
 def main():
