@@ -30,9 +30,6 @@ class ResearchGoal:
 class Hypothesis:
     id: str
     content: str
-    novelty_score: float
-    feasibility_score: float
-    safety_score: float
 
 @dataclass
 class ResearchOverview:
@@ -49,9 +46,6 @@ class GenerationAgent:
                 hypothesis = Hypothesis(
                     id=f"hypothesis_{i}",
                     content=idea.text,
-                    novelty_score=0.8,  # Placeholder, replace with actual scoring logic
-                    feasibility_score=0.7,  # Placeholder, replace with actual scoring logic
-                    safety_score=0.9  # Placeholder, replace with actual scoring logic
                 )
                 hypotheses.append(hypothesis)
             context_memory["hypotheses"] = hypotheses
@@ -65,12 +59,8 @@ class ReflectionAgent:
         reviewed_hypotheses = []
         for hypothesis in hypotheses:
             try:
-                prompt = f"Review this hypothesis: {hypothesis.content}. Assess novelty, feasibility, and safety."
+                prompt = f"Review this hypothesis: {hypothesis.content}."
                 response = model.generate_content(prompt)
-                review = response.candidates[0].content.parts[0].text
-                hypothesis.novelty_score = 0.8  # Placeholder, replace with actual scoring logic
-                hypothesis.feasibility_score = 0.7  # Placeholder, replace with actual scoring logic
-                hypothesis.safety_score = 0.9  # Placeholder, replace with actual scoring logic
                 reviewed_hypotheses.append(hypothesis)
             except Exception as e:
                 st.error(f"Error reviewing hypothesis {hypothesis.id}: {e}")
@@ -89,9 +79,6 @@ def display_hypotheses(hypotheses: List[Hypothesis]):
     for i, hypothesis in enumerate(hypotheses):
         st.write(f"### Hypothesis {i + 1}")
         st.write(f"**Content:** {hypothesis.content}")
-        st.write(f"**Novelty Score:** {hypothesis.novelty_score}")
-        st.write(f"**Feasibility Score:** {hypothesis.feasibility_score}")
-        st.write(f"**Safety Score:** {hypothesis.safety_score}")
         st.write("---")
 
 def main():
