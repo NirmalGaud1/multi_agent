@@ -3,6 +3,7 @@ import google.generativeai as genai
 import asyncio
 from typing import List, Dict, Any
 from dataclasses import dataclass
+import re
 
 API_KEY = "AIzaSyA-9-lTQTWdNM43YdOXMQwGKDy0SrMwo6c"  # Replace with your actual API key
 
@@ -50,28 +51,39 @@ class GenerationAgent:
                 f"Preferences: {research_goal.preferences}. "
                 "For each hypothesis, provide: "
                 "1. Aim: A clear aim of the hypothesis. "
-                "2. Objectives: A list of 2-3 objectives. "
+                "2. Objectives: A list of 2-3 objectives, separated by commas. "
                 "3. Algorithm: A brief description of the proposed algorithm or methodology. "
-                "Format the output as a structured list."
+                "Format the output as a structured list, with each part on a new line. Example:\n"
+                "Aim: Investigate the impact of X on Y\n"
+                "Objectives: Measure X, Analyze Y, Determine the correlation\n"
+                "Algorithm: Use a statistical analysis method"
             )
             response = model.generate_content(prompt)
             hypotheses = []
             for i, part in enumerate(response.candidates[0].content.parts):
                 text = part.text
                 try:
-                    aim = text.split("Aim: ")[1].split("\n")[0].strip()
-                    objectives = text.split("Objectives: ")[1].split("\n")[0].strip().split(", ")
-                    algorithm = text.split("Algorithm: ")[1].split("\n")[0].strip()
-                    hypothesis = Hypothesis(
-                        id=f"hypothesis_{i}",
-                        aim=aim,
-                        objectives=objectives,
-                        algorithm=algorithm,
-                        novelty_score=0.8,
-                        feasibility_score=0.7,
-                        safety_score=0.9
-                    )
-                    hypotheses.append(hypothesis)
+                    aim_match = re.search(r"Aim:\s*(.+)", text)
+                    objectives_match = re.search(r"Objectives:\s*(.+)", text)
+                    algorithm_match = re.search(r"Algorithm:\s*(.+)", text)
+
+                    if aim_match and objectives_match and algorithm_match:
+                        aim = aim_match.group(1).strip()
+                        objectives = [obj.strip() for obj in objectives_match.group(1).split(",")]
+                        algorithm = algorithm_match.group(1).strip()
+
+                        hypothesis = Hypothesis(
+                            id=f"hypothesis_{i}",
+                            aim=aim,
+                            objectives=objectives,
+                            algorithm=algorithm,
+                            novelty_score=0.8,
+                            feasibility_score=0.7,
+                            safety_score=0.9
+                        )
+                        hypotheses.append(hypothesis)
+                    else:
+                        st.error(f"Error parsing hypothesis {i}: Incomplete data.")
                 except Exception as e:
                     st.error(f"Error parsing hypothesis {i}: {e}")
             context_memory["hypotheses"] = hypotheses
