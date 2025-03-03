@@ -77,46 +77,13 @@ class ReflectionAgent:
         context_memory["reviewed_hypotheses"] = reviewed_hypotheses
         return reviewed_hypotheses
 
-class RankingAgent:
-    def __init__(self):
-        self.elo_ratings = {}
-
-    async def rank_hypotheses(self, hypotheses: List[Hypothesis]) -> List[Hypothesis]:
-        for hypothesis in hypotheses:
-            self.elo_ratings[hypothesis.id] = 1200
-        for i in range(len(hypotheses)):
-            for j in range(i + 1, len(hypotheses)):
-                winner = self._simulate_match(hypotheses[i], hypotheses[j])
-                self._update_elo_ratings(hypotheses[i], hypotheses[j], winner)
-        ranked_hypotheses = sorted(hypotheses, key=lambda h: self.elo_ratings[h.id], reverse=True)
-        return ranked_hypotheses
-
-    def _simulate_match(self, h1: Hypothesis, h2: Hypothesis) -> Hypothesis:
-        prompt = f"Compare these hypotheses: 1) {h1.content} 2) {h2.content}. Which is better?"
-        response = model.generate_content(prompt)
-        return h1 if response.candidates[0].content.parts[0].text == "1" else h2
-
-    def _update_elo_ratings(self, h1: Hypothesis, h2: Hypothesis, winner: Hypothesis):
-        k = 32
-        r1, r2 = self.elo_ratings[h1.id], self.elo_ratings[h2.id]
-        e1 = 1 / (1 + 10 ** ((r2 - r1) / 400))
-        e2 = 1 / (1 + 10 ** ((r1 - r2) / 400))
-        if winner == h1:
-            self.elo_ratings[h1.id] += k * (1 - e1)
-            self.elo_ratings[h2.id] += k * (0 - e2)
-        else:
-            self.elo_ratings[h1.id] += k * (0 - e1)
-            self.elo_ratings[h2.id] += k * (1 - e2)
-
 async def main_workflow(research_goal: ResearchGoal):
     generation_agent = GenerationAgent()
     reflection_agent = ReflectionAgent()
-    ranking_agent = RankingAgent()
 
     hypotheses = await generation_agent.generate_hypotheses(research_goal)
     reviewed_hypotheses = await reflection_agent.review_hypotheses(hypotheses)
-    ranked_hypotheses = await ranking_agent.rank_hypotheses(reviewed_hypotheses)
-    return ranked_hypotheses
+    return reviewed_hypotheses
 
 def display_hypotheses(hypotheses: List[Hypothesis]):
     for i, hypothesis in enumerate(hypotheses):
@@ -129,7 +96,7 @@ def display_hypotheses(hypotheses: List[Hypothesis]):
 
 def main():
     st.title("AI Co-Scientist System")
-    st.write("Enter your research goal and constraints to generate and rank hypotheses.")
+    st.write("Enter your research goal and constraints to generate hypotheses.")
 
     # Input fields
     goal = st.text_input("Research Goal", "Explore the biological mechanisms of ALS.")
@@ -166,10 +133,10 @@ def main():
             preferences=preferences
         )
         try:
-            ranked_hypotheses = asyncio.run(main_workflow(research_goal))
-            if ranked_hypotheses:
-                st.write("### Ranked Hypotheses")
-                display_hypotheses(ranked_hypotheses)
+            reviewed_hypotheses = asyncio.run(main_workflow(research_goal))
+            if reviewed_hypotheses:
+                st.write("### Hypotheses")
+                display_hypotheses(reviewed_hypotheses)
             else:
                 st.warning("No hypotheses generated. Please check your input and try again.")
         except Exception as e:
