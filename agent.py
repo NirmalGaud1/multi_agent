@@ -4,7 +4,7 @@ import asyncio
 from typing import List, Dict, Any
 from dataclasses import dataclass
 
-API_KEY = "AIzaSyA-9-lTQTWdNM43YdOXMQwGKDy0SrMwo6c"
+API_KEY = "AIzaSyA-9-lTQTWdNM43YdOXMQwGKDy0SrMwo6c"  # Replace with your actual API key
 
 def configure_generative_model(api_key):
     try:
@@ -44,7 +44,6 @@ class ResearchOverview:
 class GenerationAgent:
     async def generate_hypotheses(self, research_goal: ResearchGoal) -> List[Hypothesis]:
         try:
-            # Construct the prompt to include aim, objectives, and algorithm
             prompt = (
                 f"Generate hypotheses for: {research_goal.goal}. "
                 f"Constraints: {research_goal.constraints}. "
@@ -59,7 +58,6 @@ class GenerationAgent:
             hypotheses = []
             for i, part in enumerate(response.candidates[0].content.parts):
                 text = part.text
-                # Parse the generated text to extract aim, objectives, and algorithm
                 try:
                     aim = text.split("Aim: ")[1].split("\n")[0].strip()
                     objectives = text.split("Objectives: ")[1].split("\n")[0].strip().split(", ")
@@ -121,10 +119,19 @@ class RankingAgent:
             f"Compare these hypotheses: "
             f"1) Aim: {h1.aim}, Objectives: {h1.objectives}, Algorithm: {h1.algorithm}. "
             f"2) Aim: {h2.aim}, Objectives: {h2.objectives}, Algorithm: {h2.algorithm}. "
-            "Which is better?"
+            "Which is better, 1 or 2?"
         )
         response = model.generate_content(prompt)
-        return h1 if response.candidates[0].content.parts[0].text == "1" else h2
+        try:
+          result = response.text
+          if "1" in result:
+              return h1
+          elif "2" in result:
+              return h2
+          else:
+              return h1 #default if the model fails to answer 1 or 2.
+        except:
+          return h1
 
     def _update_elo_ratings(self, h1: Hypothesis, h2: Hypothesis, winner: Hypothesis):
         k = 32
@@ -189,20 +196,3 @@ def main():
     preferences = f"format: {output_format}"
 
     if st.button("Generate Hypotheses"):
-        research_goal = ResearchGoal(
-            goal=goal,
-            constraints=constraints,
-            preferences=preferences
-        )
-        try:
-            ranked_hypotheses = asyncio.run(main_workflow(research_goal))
-            if ranked_hypotheses:
-                st.write("### Ranked Hypotheses")
-                display_hypotheses(ranked_hypotheses)
-            else:
-                st.warning("No hypotheses generated. Please check your input and try again.")
-        except Exception as e:
-            st.error(f"An error occurred: {e}")
-
-if __name__ == "__main__":
-    main()
