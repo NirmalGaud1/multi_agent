@@ -5,7 +5,7 @@ from typing import List, Dict, Any
 from dataclasses import dataclass
 import re
 
-API_KEY = "YOUR_API_KEY"  # Replace with your actual API key
+API_KEY = "AIzaSyBsq5Kd5nJgx2fejR77NT8v5Lk3PK4gbH8"  # Replace with your actual API key
 
 def configure_generative_model(api_key):
     try:
