@@ -75,6 +75,7 @@ class ReflectionAgent:
                 hypothesis.feasibility_score = 0.7  # Placeholder, replace with actual scoring logic
                 hypothesis.safety_score = 0.9  # Placeholder, replace with actual scoring logic
                 reviewed_hypotheses.append(hypothesis)
+                await asyncio.sleep(1) #add a 1 second delay between requests.
             except Exception as e:
                 st.error(f"Error reviewing hypothesis {hypothesis.id}: {e}")
         context_memory["reviewed_hypotheses"] = reviewed_hypotheses
