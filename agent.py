@@ -46,17 +46,13 @@ class GenerationAgent:
     async def generate_hypotheses(self, research_goal: ResearchGoal) -> List[Hypothesis]:
         try:
             prompt = (
-                f"Generate 5 detailed research hypotheses for: {research_goal.goal}. "
+                f"Generate 3 concise research hypotheses for: {research_goal.goal}. "
                 f"Constraints: {research_goal.constraints}. "
                 f"Preferences: {research_goal.preferences}. "
-                "For each hypothesis, provide the following, STRICTLY in this order:\n"
+                "For each hypothesis, provide:\n"
                 "Hypothesis Statement: [Your Hypothesis Statement]\n"
-                "Detailed Description: [A detailed description of the research]\n"
-                "Algorithm:\n"
-                "1. [Step 1]\n"
-                "2. [Step 2]\n"
-                "3. [Step 3]\n"
-                "Ensure each section is clearly labeled and separated by newlines. Do not include any extra text outside of the requested sections."
+                "Description: [A brief description of the research]\n"
+                "Approach: [A one-sentence description of the approach]"
             )
             response = model.generate_content(prompt)
             hypotheses = []
@@ -65,9 +61,9 @@ class GenerationAgent:
 
             for i, part in enumerate(parts):
                 try:
-                    aim_match = re.search(r"(.+?)\nDetailed Description:", part, re.DOTALL)
-                    description_match = re.search(r"Detailed Description:\s*(.+?)\nAlgorithm:", part, re.DOTALL)
-                    algorithm_match = re.search(r"Algorithm:\s*(.+)", part, re.DOTALL)
+                    aim_match = re.search(r"(.+?)\nDescription:", part, re.DOTALL)
+                    description_match = re.search(r"Description:\s*(.+?)\nApproach:", part, re.DOTALL)
+                    algorithm_match = re.search(r"Approach:\s*(.+)", part, re.DOTALL)
 
                     if aim_match and description_match and algorithm_match:
                         aim = aim_match.group(1).strip()
@@ -85,34 +81,14 @@ class GenerationAgent:
                         )
                         hypotheses.append(hypothesis)
                     else:
-                        st.error(f"Error parsing hypothesis {i}: Incomplete data. Raw response part:\n{part}")
+                        st.error(f"Error parsing hypothesis {i}: Incomplete data.")
                 except Exception as e:
-                    st.error(f"Error parsing hypothesis {i}: {e}. Raw response part:\n{part}")
+                    st.error(f"Error parsing hypothesis {i}: {e}")
             context_memory["hypotheses"] = hypotheses
             return hypotheses
         except Exception as e:
             st.error(f"Error generating hypotheses: {e}")
             return []
-
-class ReflectionAgent:
-    async def review_hypotheses(self, hypotheses: List[Hypothesis]) -> List[Hypothesis]:
-        reviewed_hypotheses = []
-        for hypothesis in hypotheses:
-            try:
-                prompt = (
-                    f"Review this hypothesis: Hypothesis Statement: {hypothesis.aim}, Detailed Description: {hypothesis.objectives[0]}, "
-                    f"Algorithm: {hypothesis.algorithm}. Assess novelty, feasibility, and safety."
-                )
-                response = model.generate_content(prompt)
-                review = response.candidates[0].content.parts[0].text
-                hypothesis.novelty_score = 0.8
-                hypothesis.feasibility_score = 0.7
-                hypothesis.safety_score = 0.9
-                reviewed_hypotheses.append(hypothesis)
-            except Exception as e:
-                st.error(f"Error reviewing hypothesis {hypothesis.id}: {e}")
-        context_memory["reviewed_hypotheses"] = reviewed_hypotheses
-        return reviewed_hypotheses
 
 class RankingAgent:
     def __init__(self):
@@ -131,8 +107,8 @@ class RankingAgent:
     def _simulate_match(self, h1: Hypothesis, h2: Hypothesis) -> Hypothesis:
         prompt = (
             f"Compare these hypotheses: "
-            f"1) Hypothesis Statement: {h1.aim}, Detailed Description: {h1.objectives[0]}, Algorithm: {h1.algorithm}. "
-            f"2) Hypothesis Statement: {h2.aim}, Detailed Description: {h2.objectives[0]}, Algorithm: {h2.algorithm}. "
+            f"1) Hypothesis Statement: {h1.aim}, Description: {h1.objectives[0]}, Approach: {h1.algorithm}. "
+            f"2) Hypothesis Statement: {h2.aim}, Description: {h2.objectives[0]}, Approach: {h2.algorithm}. "
             "Which is better, 1 or 2?"
         )
         response = model.generate_content(prompt)
@@ -161,21 +137,19 @@ class RankingAgent:
 
 async def main_workflow(research_goal: ResearchGoal):
     generation_agent = GenerationAgent()
-    reflection_agent = ReflectionAgent()
     ranking_agent = RankingAgent()
 
     hypotheses = await generation_agent.generate_hypotheses(research_goal)
-    reviewed_hypotheses = await reflection_agent.review_hypotheses(hypotheses)
-    ranked_hypotheses = await ranking_agent.rank_hypotheses(reviewed_hypotheses)
+    ranked_hypotheses = await ranking_agent.rank_hypotheses(hypotheses)
     return ranked_hypotheses
 
 def display_hypotheses(hypotheses: List[Hypothesis]):
     for i, hypothesis in enumerate(hypotheses):
         st.write(f"### Hypothesis {i + 1}")
         st.write(f"**Hypothesis Statement:** {hypothesis.aim}")
-        st.write(f"**Detailed Description:**")
+        st.write(f"**Description:**")
         st.write(f"{hypothesis.objectives[0]}")
-        st.write(f"**Algorithm:** {hypothesis.algorithm}")
+        st.write(f"**Approach:** {hypothesis.algorithm}")
         st.write(f"**Novelty Score:** {hypothesis.novelty_score}")
         st.write(f"**Feasibility Score:** {hypothesis.feasibility_score}")
         st.write(f"**Safety Score:** {hypothesis.safety_score}")
