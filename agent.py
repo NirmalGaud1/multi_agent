@@ -3,7 +3,6 @@ import google.generativeai as genai
 import asyncio
 from typing import List, Dict, Any
 from dataclasses import dataclass
-import re
 
 API_KEY = "AIzaSyBsq5Kd5nJgx2fejR77NT8v5Lk3PK4gbH8"  # Replace with your actual API key
 
@@ -30,9 +29,7 @@ class ResearchGoal:
 @dataclass
 class Hypothesis:
     id: str
-    aim: str
-    objectives: List[str]
-    algorithm: str
+    content: str
     novelty_score: float
     feasibility_score: float
     safety_score: float
@@ -45,47 +42,44 @@ class ResearchOverview:
 class GenerationAgent:
     async def generate_hypotheses(self, research_goal: ResearchGoal) -> List[Hypothesis]:
         try:
-            prompt = (
-                f"Generate 3 concise research hypotheses for: {research_goal.goal}. "
-                f"Constraints: {research_goal.constraints}. "
-                f"Preferences: {research_goal.preferences}. "
-                "For each hypothesis, provide:\n"
-                "Hypothesis Statement: [Your Hypothesis Statement]\n"
-                "Description: [A brief description of the research]"
-            )
+            prompt = f"Generate 3 novel hypotheses for: {research_goal.goal}. Constraints: {research_goal.constraints}."
             response = model.generate_content(prompt)
             hypotheses = []
-            parts = re.split(r"Hypothesis \d+:\n\*\*", response.text)
-            parts = parts[1:]
-
-            for i, part in enumerate(parts):
-                try:
-                    aim_match = re.search(r"\*\*(.+?)\nDescription:", part, re.DOTALL)
-                    description_match = re.search(r"Description:\s*(.+)", part, re.DOTALL)
-
-                    if aim_match and description_match:
-                        aim = aim_match.group(1).strip()
-                        description = description_match.group(1).strip()
-
-                        hypothesis = Hypothesis(
-                            id=f"hypothesis_{i}",
-                            aim=aim,
-                            objectives=[description],
-                            algorithm="N/A",
-                            novelty_score=0.8,
-                            feasibility_score=0.7,
-                            safety_score=0.9
-                        )
-                        hypotheses.append(hypothesis)
-                    else:
-                        st.error(f"Error parsing hypothesis {i}: Incomplete data. Raw response:\n{part}")
-                except Exception as e:
-                    st.error(f"Error parsing hypothesis {i}: {e}. Raw response:\n{part}")
-            context_memory["hypotheses"] = hypotheses
-            return hypotheses
+            if response.candidates and response.candidates[0].content.parts:
+                for i, idea in enumerate(response.candidates[0].content.parts):
+                    hypothesis = Hypothesis(
+                        id=f"hypothesis_{i}",
+                        content=idea.text,
+                        novelty_score=0.8,  # Placeholder, replace with actual scoring logic
+                        feasibility_score=0.7,  # Placeholder, replace with actual scoring logic
+                        safety_score=0.9  # Placeholder, replace with actual scoring logic
+                    )
+                    hypotheses.append(hypothesis)
+                context_memory["hypotheses"] = hypotheses
+                return hypotheses
+            else:
+                st.warning("The AI returned an empty response.")
+                return []
         except Exception as e:
             st.error(f"Error generating hypotheses: {e}")
             return []
+
+class ReflectionAgent:
+    async def review_hypotheses(self, hypotheses: List[Hypothesis]) -> List[Hypothesis]:
+        reviewed_hypotheses = []
+        for hypothesis in hypotheses:
+            try:
+                prompt = f"Review this hypothesis: {hypothesis.content}. Assess novelty, feasibility, and safety."
+                response = model.generate_content(prompt)
+                review = response.candidates[0].content.parts[0].text
+                hypothesis.novelty_score = 0.8  # Placeholder, replace with actual scoring logic
+                hypothesis.feasibility_score = 0.7  # Placeholder, replace with actual scoring logic
+                hypothesis.safety_score = 0.9  # Placeholder, replace with actual scoring logic
+                reviewed_hypotheses.append(hypothesis)
+            except Exception as e:
+                st.error(f"Error reviewing hypothesis {hypothesis.id}: {e}")
+        context_memory["reviewed_hypotheses"] = reviewed_hypotheses
+        return reviewed_hypotheses
 
 class RankingAgent:
     def __init__(self):
@@ -102,23 +96,18 @@ class RankingAgent:
         return ranked_hypotheses
 
     def _simulate_match(self, h1: Hypothesis, h2: Hypothesis) -> Hypothesis:
-        prompt = (
-            f"Compare these hypotheses: "
-            f"1) Hypothesis Statement: {h1.aim}, Description: {h1.objectives[0]}. "
-            f"2) Hypothesis Statement: {h2.aim}, Description: {h2.objectives[0]}. "
-            "Which is better, 1 or 2?"
-        )
+        prompt = f"Compare these hypotheses: 1) {h1.content} 2) {h2.content}. Which is better?"
         response = model.generate_content(prompt)
         try:
-          result = response.text
-          if "1" in result:
-              return h1
-          elif "2" in result:
-              return h2
-          else:
-              return h1 #default if the model fails to answer 1 or 2.
+            if "1" in response.candidates[0].content.parts[0].text:
+                return h1
+            elif "2" in response.candidates[0].content.parts[0].text:
+                return h2
+            else:
+                return h1
+
         except:
-          return h1
+            return h1
 
     def _update_elo_ratings(self, h1: Hypothesis, h2: Hypothesis, winner: Hypothesis):
         k = 32
@@ -134,19 +123,18 @@ class RankingAgent:
 
 async def main_workflow(research_goal: ResearchGoal):
     generation_agent = GenerationAgent()
+    reflection_agent = ReflectionAgent()
     ranking_agent = RankingAgent()
 
     hypotheses = await generation_agent.generate_hypotheses(research_goal)
-    ranked_hypotheses = await ranking_agent.rank_hypotheses(hypotheses)
+    reviewed_hypotheses = await reflection_agent.review_hypotheses(hypotheses)
+    ranked_hypotheses = await ranking_agent.rank_hypotheses(reviewed_hypotheses)
     return ranked_hypotheses
 
 def display_hypotheses(hypotheses: List[Hypothesis]):
     for i, hypothesis in enumerate(hypotheses):
-        st.write(f"### Hypothesis {i + 1}")
-        st.write(f"**Hypothesis Statement:** {hypothesis.aim}")
-        st.write(f"**Description:**")
-        st.write(f"{hypothesis.objectives[0]}")
-        st.write(f"**Algorithm:** {hypothesis.algorithm}")
+        st.write(f"Hypothesis {i + 1}")
+        st.write(f"**Content:** {hypothesis.content}")
         st.write(f"**Novelty Score:** {hypothesis.novelty_score}")
         st.write(f"**Feasibility Score:** {hypothesis.feasibility_score}")
         st.write(f"**Safety Score:** {hypothesis.safety_score}")
@@ -156,28 +144,9 @@ def main():
     st.title("AI Co-Scientist System")
     st.write("Enter your research goal and constraints to generate and rank hypotheses.")
 
-    goal = st.text_input("Research Goal", "Explore the ethical implications of AI in autonomous vehicles.")
-
-    safety_level = st.selectbox(
-        "Safety Level",
-        options=["low", "medium", "high"],
-        index=2
-    )
-
-    novelty_requirement = st.selectbox(
-        "Novelty Requirement",
-        options=["required", "not required"],
-        index=0
-    )
-
-    output_format = st.selectbox(
-        "Output Format",
-        options=["simple", "medium", "detailed"],
-        index=2
-    )
-
-    constraints = f"safety: {safety_level}, novelty: {novelty_requirement}"
-    preferences = f"format: {output_format}"
+    goal = st.text_input("Research Goal", "Explore the biological mechanisms of ALS.")
+    constraints = st.text_input("Constraints", "safety: high, novelty: required")
+    preferences = st.text_text_input("Preferences", "format: detailed")
 
     if st.button("Generate Hypotheses"):
         research_goal = ResearchGoal(
@@ -188,7 +157,7 @@ def main():
         try:
             ranked_hypotheses = asyncio.run(main_workflow(research_goal))
             if ranked_hypotheses:
-                st.write("### Ranked Hypotheses")
+                st.write("Ranked Hypotheses")
                 display_hypotheses(ranked_hypotheses)
             else:
                 st.warning("No hypotheses generated. Please check your input and try again.")
