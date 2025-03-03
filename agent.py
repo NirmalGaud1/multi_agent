@@ -46,36 +46,38 @@ class GenerationAgent:
     async def generate_hypotheses(self, research_goal: ResearchGoal) -> List[Hypothesis]:
         try:
             prompt = (
-                f"Generate hypotheses for: {research_goal.goal}. "
+                f"Generate 5 detailed research hypotheses for: {research_goal.goal}. "
                 f"Constraints: {research_goal.constraints}. "
                 f"Preferences: {research_goal.preferences}. "
                 "For each hypothesis, provide: "
-                "1. Aim: A clear aim of the hypothesis. "
-                "2. Objectives: A list of 2-3 objectives, separated by commas. "
-                "3. Algorithm: A brief description of the proposed algorithm or methodology. "
+                "1. Hypothesis Statement: A clear and concise hypothesis statement. "
+                "2. Detailed Description: A thorough description of the research, including the problem being addressed and the expected outcomes. "
+                "3. Algorithm: A detailed algorithm in numbered points. "
                 "Format the output as a structured list, with each part on a new line. Example:\n"
-                "Aim: Investigate the impact of X on Y\n"
-                "Objectives: Measure X, Analyze Y, Determine the correlation\n"
-                "Algorithm: Use a statistical analysis method"
+                "Hypothesis Statement: Hypothesis: A new method for X will improve Y.\n"
+                "Detailed Description: This research aims to develop a novel method for X to improve Y. We expect to see a significant improvement in Y using this new method.\n"
+                "Algorithm: 1. Step one. 2. Step two. 3. Step three."
             )
             response = model.generate_content(prompt)
             hypotheses = []
-            for i, part in enumerate(response.candidates[0].content.parts):
-                text = part.text
-                try:
-                    aim_match = re.search(r"Aim:\s*(.+)", text)
-                    objectives_match = re.search(r"Objectives:\s*(.+)", text)
-                    algorithm_match = re.search(r"Algorithm:\s*(.+)", text)
+            parts = response.text.split("Hypothesis Statement:")
+            parts = parts[1:] #remove the first element, which is empty.
 
-                    if aim_match and objectives_match and algorithm_match:
+            for i, part in enumerate(parts):
+                try:
+                    aim_match = re.search(r"(.+?)\nDetailed Description:", part, re.DOTALL)
+                    description_match = re.search(r"Detailed Description:\s*(.+?)\nAlgorithm:", part, re.DOTALL)
+                    algorithm_match = re.search(r"Algorithm:\s*(.+)", part, re.DOTALL)
+
+                    if aim_match and description_match and algorithm_match:
                         aim = aim_match.group(1).strip()
-                        objectives = [obj.strip() for obj in objectives_match.group(1).split(",")]
+                        description = description_match.group(1).strip()
                         algorithm = algorithm_match.group(1).strip()
 
                         hypothesis = Hypothesis(
                             id=f"hypothesis_{i}",
                             aim=aim,
-                            objectives=objectives,
+                            objectives=[description],
                             algorithm=algorithm,
                             novelty_score=0.8,
                             feasibility_score=0.7,
@@ -98,7 +100,7 @@ class ReflectionAgent:
         for hypothesis in hypotheses:
             try:
                 prompt = (
-                    f"Review this hypothesis: Aim: {hypothesis.aim}, Objectives: {hypothesis.objectives}, "
+                    f"Review this hypothesis: Hypothesis Statement: {hypothesis.aim}, Detailed Description: {hypothesis.objectives[0]}, "
                     f"Algorithm: {hypothesis.algorithm}. Assess novelty, feasibility, and safety."
                 )
                 response = model.generate_content(prompt)
@@ -129,8 +131,8 @@ class RankingAgent:
     def _simulate_match(self, h1: Hypothesis, h2: Hypothesis) -> Hypothesis:
         prompt = (
             f"Compare these hypotheses: "
-            f"1) Aim: {h1.aim}, Objectives: {h1.objectives}, Algorithm: {h1.algorithm}. "
-            f"2) Aim: {h2.aim}, Objectives: {h2.objectives}, Algorithm: {h2.algorithm}. "
+            f"1) Hypothesis Statement: {h1.aim}, Detailed Description: {h1.objectives[0]}, Algorithm: {h1.algorithm}. "
+            f"2) Hypothesis Statement: {h2.aim}, Detailed Description: {h2.objectives[0]}, Algorithm: {h2.algorithm}. "
             "Which is better, 1 or 2?"
         )
         response = model.generate_content(prompt)
@@ -170,10 +172,9 @@ async def main_workflow(research_goal: ResearchGoal):
 def display_hypotheses(hypotheses: List[Hypothesis]):
     for i, hypothesis in enumerate(hypotheses):
         st.write(f"### Hypothesis {i + 1}")
-        st.write(f"**Aim:** {hypothesis.aim}")
-        st.write(f"**Objectives:**")
-        for obj in hypothesis.objectives:
-            st.write(f"- {obj}")
+        st.write(f"**Hypothesis Statement:** {hypothesis.aim}")
+        st.write(f"**Detailed Description:**")
+        st.write(f"{hypothesis.objectives[0]}")
         st.write(f"**Algorithm:** {hypothesis.algorithm}")
         st.write(f"**Novelty Score:** {hypothesis.novelty_score}")
         st.write(f"**Feasibility Score:** {hypothesis.feasibility_score}")
