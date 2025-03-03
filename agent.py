@@ -1,12 +1,25 @@
 import streamlit as st
 import google.generativeai as genai
-import os
 import asyncio
 from typing import List, Dict, Any
 from dataclasses import dataclass
 
+# Hardcoded API key (replace with your actual key)
 API_KEY = "AIzaSyA-9-lTQTWdNM43YdOXMQwGKDy0SrMwo6c"
-genai.configure(api_key=API_KEY)
+
+# Configure the generative model
+def configure_generative_model(api_key):
+    try:
+        genai.configure(api_key=api_key)
+        return genai.GenerativeModel('gemini-1.5-flash')
+    except Exception as e:
+        st.error(f"Error configuring the generative model: {e}")
+        return None
+
+# Initialize the generative model
+model = configure_generative_model(API_KEY)
+if not model:
+    st.stop()
 
 context_memory = {}
 
@@ -31,31 +44,39 @@ class ResearchOverview:
 
 class GenerationAgent:
     async def generate_hypotheses(self, research_goal: ResearchGoal) -> List[Hypothesis]:
-        prompt = f"Generate novel hypotheses for: {research_goal.goal}. Constraints: {research_goal.constraints}."
-        response = genai.generate_text(prompt=prompt)
-        hypotheses = []
-        for i, idea in enumerate(response["ideas"]):
-            hypothesis = Hypothesis(
-                id=f"hypothesis_{i}",
-                content=idea["content"],
-                novelty_score=idea["novelty_score"],
-                feasibility_score=idea["feasibility_score"],
-                safety_score=idea["safety_score"]
-            )
-            hypotheses.append(hypothesis)
-        context_memory["hypotheses"] = hypotheses
-        return hypotheses
+        try:
+            prompt = f"Generate novel hypotheses for: {research_goal.goal}. Constraints: {research_goal.constraints}."
+            response = model.generate_content(prompt)
+            hypotheses = []
+            for i, idea in enumerate(response.candidates[0].content.parts):
+                hypothesis = Hypothesis(
+                    id=f"hypothesis_{i}",
+                    content=idea.text,
+                    novelty_score=0.8,  # Placeholder, replace with actual scoring logic
+                    feasibility_score=0.7,  # Placeholder, replace with actual scoring logic
+                    safety_score=0.9  # Placeholder, replace with actual scoring logic
+                )
+                hypotheses.append(hypothesis)
+            context_memory["hypotheses"] = hypotheses
+            return hypotheses
+        except Exception as e:
+            st.error(f"Error generating hypotheses: {e}")
+            return []
 
 class ReflectionAgent:
     async def review_hypotheses(self, hypotheses: List[Hypothesis]) -> List[Hypothesis]:
         reviewed_hypotheses = []
         for hypothesis in hypotheses:
-            prompt = f"Review this hypothesis: {hypothesis.content}. Assess novelty, feasibility, and safety."
-            review = genai.generate_text(prompt=prompt)
-            hypothesis.novelty_score = review["novelty_score"]
-            hypothesis.feasibility_score = review["feasibility_score"]
-            hypothesis.safety_score = review["safety_score"]
-            reviewed_hypotheses.append(hypothesis)
+            try:
+                prompt = f"Review this hypothesis: {hypothesis.content}. Assess novelty, feasibility, and safety."
+                response = model.generate_content(prompt)
+                review = response.candidates[0].content.parts[0].text
+                hypothesis.novelty_score = 0.8  # Placeholder, replace with actual scoring logic
+                hypothesis.feasibility_score = 0.7  # Placeholder, replace with actual scoring logic
+                hypothesis.safety_score = 0.9  # Placeholder, replace with actual scoring logic
+                reviewed_hypotheses.append(hypothesis)
+            except Exception as e:
+                st.error(f"Error reviewing hypothesis {hypothesis.id}: {e}")
         context_memory["reviewed_hypotheses"] = reviewed_hypotheses
         return reviewed_hypotheses
 
@@ -75,8 +96,8 @@ class RankingAgent:
 
     def _simulate_match(self, h1: Hypothesis, h2: Hypothesis) -> Hypothesis:
         prompt = f"Compare these hypotheses: 1) {h1.content} 2) {h2.content}. Which is better?"
-        response = genai.generate_text(prompt=prompt)
-        return h1 if response["winner"] == "1" else h2
+        response = model.generate_content(prompt)
+        return h1 if response.candidates[0].content.parts[0].text == "1" else h2
 
     def _update_elo_ratings(self, h1: Hypothesis, h2: Hypothesis, winner: Hypothesis):
         k = 32
@@ -123,9 +144,15 @@ def main():
             constraints=constraints,
             preferences=preferences
         )
-        ranked_hypotheses = asyncio.run(main_workflow(research_goal))
-        st.write("### Ranked Hypotheses")
-        display_hypotheses(ranked_hypotheses)
+        try:
+            ranked_hypotheses = asyncio.run(main_workflow(research_goal))
+            if ranked_hypotheses:
+                st.write("### Ranked Hypotheses")
+                display_hypotheses(ranked_hypotheses)
+            else:
+                st.warning("No hypotheses generated. Please check your input and try again.")
+        except Exception as e:
+            st.error(f"An error occurred: {e}")
 
 if __name__ == "__main__":
     main()
