@@ -42,24 +42,27 @@ class ResearchOverview:
 class GenerationAgent:
     async def generate_hypotheses(self, research_goal: ResearchGoal) -> List[Hypothesis]:
         try:
-            prompt = f"Generate novel hypotheses for: {research_goal.goal}. Constraints: {research_goal.constraints}. Preferences: {research_goal.preferences}."
+            prompt = f"Generate only the individual hypotheses for: {research_goal.goal}. Constraints: {research_goal.constraints}. Preferences: {research_goal.preferences}. Do not include any introductory or summary text. Provide the hypotheses one by one."
             response = model.generate_content(prompt)
             hypotheses = []
-            for i, idea in enumerate(response.candidates[0].content.parts):
-                hypothesis = Hypothesis(
-                    id=f"hypothesis_{i}",
-                    content=idea.text,
-                    novelty_score=0.8,  # Placeholder, replace with actual scoring logic
-                    feasibility_score=0.7,  # Placeholder, replace with actual scoring logic
-                    safety_score=0.9  # Placeholder, replace with actual scoring logic
-                )
-                hypotheses.append(hypothesis)
+            if response.candidates and response.candidates[0].content.parts:
+                hypothesis_texts = response.candidates[0].content.parts[0].text.split('\n\n')
+                for i, text in enumerate(hypothesis_texts):
+                    if text.strip():  # Only add if the text isn't just whitespace
+                        hypothesis = Hypothesis(
+                            id=f"hypothesis_{i}",
+                            content=text.strip(),
+                            novelty_score=0.8,
+                            feasibility_score=0.7,
+                            safety_score=0.9
+                        )
+                        hypotheses.append(hypothesis)
             context_memory["hypotheses"] = hypotheses
             return hypotheses
         except Exception as e:
             st.error(f"Error generating hypotheses: {e}")
             return []
-
+            
 class ReflectionAgent:
     async def review_hypotheses(self, hypotheses: List[Hypothesis]) -> List[Hypothesis]:
         reviewed_hypotheses = []
@@ -119,8 +122,7 @@ async def main_workflow(research_goal: ResearchGoal):
     return ranked_hypotheses
 
 def display_hypotheses(hypotheses: List[Hypothesis]):
-    for i, hypothesis in enumerate(hypotheses):
-        st.write(f"### Hypothesis {i + 1}")
+    for hypothesis in hypotheses:
         st.write(f"**Content:** {hypothesis.content}")
         st.write("---")
 
