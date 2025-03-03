@@ -49,13 +49,26 @@ class GenerationAgent:
                 f"Generate 3 detailed research hypotheses for: {research_goal.goal}. "
                 f"Constraints: {research_goal.constraints}. "
                 f"Preferences: {research_goal.preferences}. "
-                "For each hypothesis, provide:\n"
+                "For each hypothesis, provide the following format:\n"
                 "Hypothesis Statement: [Your Hypothesis Statement]\n"
                 "Aim: [A clear aim of the hypothesis.]\n"
-                "Objectives: [List 2-3 specific objectives.]\n"
+                "Objectives: [List 2-3 specific objectives, each on a new line.]\n"
                 "Algorithm: [A detailed algorithm in numbered points.]\n"
+                "Example:\n"
+                "Hypothesis Statement: A new drug will reduce ALS symptoms.\n"
+                "Aim: To evaluate the efficacy of the new drug.\n"
+                "Objectives:\n"
+                "- Measure muscle strength.\n"
+                "- Assess patient quality of life.\n"
+                "Algorithm:\n"
+                "1. Administer the drug.\n"
+                "2. Conduct regular assessments.\n"
+                "3. Analyze the results."
             )
             response = model.generate_content(prompt)
+            if not response.text:
+              st.warning("The AI returned an empty response.")
+              return []
             hypotheses = []
             parts = re.split(r"Hypothesis \d+:\n\*\*", response.text)
             parts = parts[1:]
@@ -92,7 +105,7 @@ class GenerationAgent:
         except Exception as e:
             st.error(f"Error generating hypotheses: {e}")
             return []
-
+            
 class RankingAgent:
     def __init__(self):
         self.elo_ratings = {}
