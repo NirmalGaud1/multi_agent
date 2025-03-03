@@ -6,7 +6,7 @@ from dataclasses import dataclass
 
 API_KEY = "AIzaSyA-9-lTQTWdNM43YdOXMQwGKDy0SrMwo6c"
 
-def configure_generative_model(api_key):
+def configure_generative_model(api_key: str) -> genai.GenerativeModel:
     try:
         genai.configure(api_key=api_key)
         return genai.GenerativeModel('gemini-1.5-flash')
