@@ -4,10 +4,8 @@ import asyncio
 from typing import List, Dict, Any
 from dataclasses import dataclass
 
-# Hardcoded API key (replace with your actual key)
 API_KEY = "AIzaSyA-9-lTQTWdNM43YdOXMQwGKDy0SrMwo6c"
 
-# Configure the generative model
 def configure_generative_model(api_key):
     try:
         genai.configure(api_key=api_key)
@@ -16,7 +14,6 @@ def configure_generative_model(api_key):
         st.error(f"Error configuring the generative model: {e}")
         return None
 
-# Initialize the generative model
 model = configure_generative_model(API_KEY)
 if not model:
     st.stop()
@@ -45,7 +42,7 @@ class ResearchOverview:
 class GenerationAgent:
     async def generate_hypotheses(self, research_goal: ResearchGoal) -> List[Hypothesis]:
         try:
-            prompt = f"Generate novel hypotheses for: {research_goal.goal}. Constraints: {research_goal.constraints}."
+            prompt = f"Generate novel hypotheses for: {research_goal.goal}. Constraints: {research_goal.constraints}. Preferences: {research_goal.preferences}."
             response = model.generate_content(prompt)
             hypotheses = []
             for i, idea in enumerate(response.candidates[0].content.parts):
@@ -122,22 +119,45 @@ async def main_workflow(research_goal: ResearchGoal):
     return ranked_hypotheses
 
 def display_hypotheses(hypotheses: List[Hypothesis]):
-    st.write("### Ranked Hypotheses")
     for i, hypothesis in enumerate(hypotheses):
-        with st.expander(f"Hypothesis {i + 1}"):
-            st.write(f"**Content:** {hypothesis.content}")
-            st.write(f"**Novelty Score:** {hypothesis.novelty_score}")
-            st.write(f"**Feasibility Score:** {hypothesis.feasibility_score}")
-            st.write(f"**Safety Score:** {hypothesis.safety_score}")
-            st.write("---")
+        st.write(f"### Hypothesis {i + 1}")
+        st.write(f"**Content:** {hypothesis.content}")
+        st.write(f"**Novelty Score:** {hypothesis.novelty_score}")
+        st.write(f"**Feasibility Score:** {hypothesis.feasibility_score}")
+        st.write(f"**Safety Score:** {hypothesis.safety_score}")
+        st.write("---")
 
 def main():
     st.title("AI Co-Scientist System")
     st.write("Enter your research goal and constraints to generate and rank hypotheses.")
 
-    goal = st.text_input("Research Goal", "Explore the ethical implications of AI in autonomous vehicles")
-    constraints = st.text_input("Constraints", "safety: high, novelty: required")
-    preferences = st.text_input("Preferences", "format: detailed")
+    # Input fields
+    goal = st.text_input("Research Goal", "Explore the biological mechanisms of ALS.")
+
+    # Dropdown for safety level
+    safety_level = st.selectbox(
+        "Safety Level",
+        options=["low", "medium", "high"],
+        index=2  # Default to "high"
+    )
+
+    # Dropdown for novelty requirement
+    novelty_requirement = st.selectbox(
+        "Novelty Requirement",
+        options=["required", "not required"],
+        index=0  # Default to "required"
+    )
+
+    # Dropdown for output format
+    output_format = st.selectbox(
+        "Output Format",
+        options=["simple", "medium", "detailed"],
+        index=2  # Default to "detailed"
+    )
+
+    # Combine constraints and preferences
+    constraints = f"safety: {safety_level}, novelty: {novelty_requirement}"
+    preferences = f"format: {output_format}"
 
     if st.button("Generate Hypotheses"):
         research_goal = ResearchGoal(
@@ -148,6 +168,7 @@ def main():
         try:
             ranked_hypotheses = asyncio.run(main_workflow(research_goal))
             if ranked_hypotheses:
+                st.write("### Ranked Hypotheses")
                 display_hypotheses(ranked_hypotheses)
             else:
                 st.warning("No hypotheses generated. Please check your input and try again.")
