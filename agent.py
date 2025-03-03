@@ -39,7 +39,7 @@ class ResearchOverview:
 class GenerationAgent:
     async def generate_hypotheses(self, research_goal: ResearchGoal) -> List[Hypothesis]:
         try:
-            prompt = f"Generate novel hypotheses for: {research_goal.goal}. Constraints: {research_goal.constraints}. Preferences: {research_goal.preferences}."
+            prompt = f"Generate novel hypotheses for: {research_goal.goal}. Constraints: {research_goal.constraints}. Preferences: {research_goal.preferences}. Include Aim and Objective for each hypothesis"
             response = model.generate_content(prompt)
             hypotheses = []
             for i, idea in enumerate(response.candidates[0].content.parts):
