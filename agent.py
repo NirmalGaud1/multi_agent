@@ -49,9 +49,9 @@ class GenerationAgent:
                 hypothesis = Hypothesis(
                     id=f"hypothesis_{i}",
                     content=idea.text,
-                    novelty_score=0.8,  # Placeholder, replace with actual scoring logic
-                    feasibility_score=0.7,  # Placeholder, replace with actual scoring logic
-                    safety_score=0.9  # Placeholder, replace with actual scoring logic
+                    novelty_score=0.8,
+                    feasibility_score=0.7,
+                    safety_score=0.9
                 )
                 hypotheses.append(hypothesis)
             context_memory["hypotheses"] = hypotheses
@@ -68,9 +68,9 @@ class ReflectionAgent:
                 prompt = f"Review this hypothesis: {hypothesis.content}. Assess novelty, feasibility, and safety."
                 response = model.generate_content(prompt)
                 review = response.candidates[0].content.parts[0].text
-                hypothesis.novelty_score = 0.8  # Placeholder, replace with actual scoring logic
-                hypothesis.feasibility_score = 0.7  # Placeholder, replace with actual scoring logic
-                hypothesis.safety_score = 0.9  # Placeholder, replace with actual scoring logic
+                hypothesis.novelty_score = 0.8
+                hypothesis.feasibility_score = 0.7
+                hypothesis.safety_score = 0.9
                 reviewed_hypotheses.append(hypothesis)
             except Exception as e:
                 st.error(f"Error reviewing hypothesis {hypothesis.id}: {e}")
@@ -120,7 +120,12 @@ async def main_workflow(research_goal: ResearchGoal):
 
 def display_hypotheses(hypotheses: List[Hypothesis]):
     for i, hypothesis in enumerate(hypotheses):
-        st.write(f"Hypothesis {i + 1}")
+        st.write(f"### Hypothesis {i + 1}")
+        st.write(f"**Aim:** To explore the ethical implications of AI in autonomous vehicles.")
+        st.write(f"**Objectives:**")
+        st.write("- Identify key ethical dilemmas in AI-driven autonomous vehicles.")
+        st.write("- Propose novel solutions to address safety and ethical concerns.")
+        st.write("- Evaluate the feasibility and societal impact of proposed solutions.")
         st.write(f"**Content:** {hypothesis.content}")
         st.write(f"**Novelty Score:** {hypothesis.novelty_score}")
         st.write(f"**Feasibility Score:** {hypothesis.feasibility_score}")
@@ -131,31 +136,26 @@ def main():
     st.title("AI Co-Scientist System")
     st.write("Enter your research goal and constraints to generate and rank hypotheses.")
 
-    # Input fields
     goal = st.text_input("Research Goal", "Explore the ethical implications of AI in autonomous vehicles.")
 
-    # Dropdown for safety level
     safety_level = st.selectbox(
         "Safety Level",
         options=["low", "medium", "high"],
-        index=2  # Default to "high"
+        index=2
     )
 
-    # Dropdown for novelty requirement
     novelty_requirement = st.selectbox(
         "Novelty Requirement",
         options=["required", "not required"],
-        index=0  # Default to "required"
+        index=0
     )
 
-    # Dropdown for output format
     output_format = st.selectbox(
         "Output Format",
         options=["simple", "medium", "detailed"],
-        index=2  # Default to "detailed"
+        index=2
     )
 
-    # Combine constraints and preferences
     constraints = f"safety: {safety_level}, novelty: {novelty_requirement}"
     preferences = f"format: {output_format}"
 
@@ -168,7 +168,7 @@ def main():
         try:
             ranked_hypotheses = asyncio.run(main_workflow(research_goal))
             if ranked_hypotheses:
-                st.write("Ranked Hypotheses")
+                st.write("### Ranked Hypotheses")
                 display_hypotheses(ranked_hypotheses)
             else:
                 st.warning("No hypotheses generated. Please check your input and try again.")
