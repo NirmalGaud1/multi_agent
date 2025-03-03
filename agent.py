@@ -4,8 +4,10 @@ import asyncio
 from typing import List, Dict, Any
 from dataclasses import dataclass
 
+# Hardcoded API key (replace with your actual key)
 API_KEY = "AIzaSyA-9-lTQTWdNM43YdOXMQwGKDy0SrMwo6c"
 
+# Configure the generative model
 def configure_generative_model(api_key):
     try:
         genai.configure(api_key=api_key)
@@ -14,6 +16,7 @@ def configure_generative_model(api_key):
         st.error(f"Error configuring the generative model: {e}")
         return None
 
+# Initialize the generative model
 model = configure_generative_model(API_KEY)
 if not model:
     st.stop()
@@ -119,19 +122,20 @@ async def main_workflow(research_goal: ResearchGoal):
     return ranked_hypotheses
 
 def display_hypotheses(hypotheses: List[Hypothesis]):
+    st.write("### Ranked Hypotheses")
     for i, hypothesis in enumerate(hypotheses):
-        st.write(f"Hypothesis {i + 1}")
-        st.write(f"**Content:** {hypothesis.content}")
-        st.write(f"**Novelty Score:** {hypothesis.novelty_score}")
-        st.write(f"**Feasibility Score:** {hypothesis.feasibility_score}")
-        st.write(f"**Safety Score:** {hypothesis.safety_score}")
-        st.write("---")
+        with st.expander(f"Hypothesis {i + 1}"):
+            st.write(f"**Content:** {hypothesis.content}")
+            st.write(f"**Novelty Score:** {hypothesis.novelty_score}")
+            st.write(f"**Feasibility Score:** {hypothesis.feasibility_score}")
+            st.write(f"**Safety Score:** {hypothesis.safety_score}")
+            st.write("---")
 
 def main():
     st.title("AI Co-Scientist System")
     st.write("Enter your research goal and constraints to generate and rank hypotheses.")
 
-    goal = st.text_input("Research Goal", "Explore the biological mechanisms of ALS.")
+    goal = st.text_input("Research Goal", "Explore the ethical implications of AI in autonomous vehicles")
     constraints = st.text_input("Constraints", "safety: high, novelty: required")
     preferences = st.text_input("Preferences", "format: detailed")
 
@@ -144,7 +148,6 @@ def main():
         try:
             ranked_hypotheses = asyncio.run(main_workflow(research_goal))
             if ranked_hypotheses:
-                st.write("Ranked Hypotheses")
                 display_hypotheses(ranked_hypotheses)
             else:
                 st.warning("No hypotheses generated. Please check your input and try again.")
