@@ -55,12 +55,12 @@ class GenerationAgent:
             )
             response = model.generate_content(prompt)
             hypotheses = []
-            parts = response.text.split("Hypothesis Statement:")
+            parts = re.split(r"Hypothesis \d+:\n\*\*", response.text)
             parts = parts[1:]
 
             for i, part in enumerate(parts):
                 try:
-                    aim_match = re.search(r"(.+?)\nDescription:", part, re.DOTALL)
+                    aim_match = re.search(r"\*\*(.+?)\nDescription:", part, re.DOTALL)
                     description_match = re.search(r"Description:\s*(.+)", part, re.DOTALL)
 
                     if aim_match and description_match:
