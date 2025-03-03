@@ -146,7 +146,7 @@ def main():
 
     goal = st.text_input("Research Goal", "Explore the biological mechanisms of ALS.")
     constraints = st.text_input("Constraints", "safety: high, novelty: required")
-    preferences = st.text_area("Preferences", "format: detailed")  # Corrected line
+    preferences = st.text_input("Preferences", "format: detailed")  # Corrected line
 
     if st.button("Generate Hypotheses"):
         research_goal = ResearchGoal(
