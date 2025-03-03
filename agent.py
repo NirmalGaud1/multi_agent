@@ -49,19 +49,19 @@ class GenerationAgent:
                 f"Generate 5 detailed research hypotheses for: {research_goal.goal}. "
                 f"Constraints: {research_goal.constraints}. "
                 f"Preferences: {research_goal.preferences}. "
-                "For each hypothesis, provide: "
-                "1. Hypothesis Statement: A clear and concise hypothesis statement. "
-                "2. Detailed Description: A thorough description of the research, including the problem being addressed and the expected outcomes. "
-                "3. Algorithm: A detailed algorithm in numbered points. "
-                "Format the output as a structured list, with each part on a new line. Example:\n"
-                "Hypothesis Statement: Hypothesis: A new method for X will improve Y.\n"
-                "Detailed Description: This research aims to develop a novel method for X to improve Y. We expect to see a significant improvement in Y using this new method.\n"
-                "Algorithm: 1. Step one. 2. Step two. 3. Step three."
+                "For each hypothesis, provide the following, STRICTLY in this order:\n"
+                "Hypothesis Statement: [Your Hypothesis Statement]\n"
+                "Detailed Description: [A detailed description of the research]\n"
+                "Algorithm:\n"
+                "1. [Step 1]\n"
+                "2. [Step 2]\n"
+                "3. [Step 3]\n"
+                "Ensure each section is clearly labeled and separated by newlines. Do not include any extra text outside of the requested sections."
             )
             response = model.generate_content(prompt)
             hypotheses = []
             parts = response.text.split("Hypothesis Statement:")
-            parts = parts[1:] #remove the first element, which is empty.
+            parts = parts[1:]
 
             for i, part in enumerate(parts):
                 try:
@@ -85,9 +85,9 @@ class GenerationAgent:
                         )
                         hypotheses.append(hypothesis)
                     else:
-                        st.error(f"Error parsing hypothesis {i}: Incomplete data.")
+                        st.error(f"Error parsing hypothesis {i}: Incomplete data. Raw response part:\n{part}")
                 except Exception as e:
-                    st.error(f"Error parsing hypothesis {i}: {e}")
+                    st.error(f"Error parsing hypothesis {i}: {e}. Raw response part:\n{part}")
             context_memory["hypotheses"] = hypotheses
             return hypotheses
         except Exception as e:
