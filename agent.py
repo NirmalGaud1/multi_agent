@@ -51,8 +51,7 @@ class GenerationAgent:
                 f"Preferences: {research_goal.preferences}. "
                 "For each hypothesis, provide:\n"
                 "Hypothesis Statement: [Your Hypothesis Statement]\n"
-                "Description: [A brief description of the research]\n"
-                "Approach: [A one-sentence description of the approach]"
+                "Description: [A brief description of the research]"
             )
             response = model.generate_content(prompt)
             hypotheses = []
@@ -62,28 +61,26 @@ class GenerationAgent:
             for i, part in enumerate(parts):
                 try:
                     aim_match = re.search(r"(.+?)\nDescription:", part, re.DOTALL)
-                    description_match = re.search(r"Description:\s*(.+?)\nApproach:", part, re.DOTALL)
-                    algorithm_match = re.search(r"Approach:\s*(.+)", part, re.DOTALL)
+                    description_match = re.search(r"Description:\s*(.+)", part, re.DOTALL)
 
-                    if aim_match and description_match and algorithm_match:
+                    if aim_match and description_match:
                         aim = aim_match.group(1).strip()
                         description = description_match.group(1).strip()
-                        algorithm = algorithm_match.group(1).strip()
 
                         hypothesis = Hypothesis(
                             id=f"hypothesis_{i}",
                             aim=aim,
                             objectives=[description],
-                            algorithm=algorithm,
+                            algorithm="N/A",
                             novelty_score=0.8,
                             feasibility_score=0.7,
                             safety_score=0.9
                         )
                         hypotheses.append(hypothesis)
                     else:
-                        st.error(f"Error parsing hypothesis {i}: Incomplete data.")
+                        st.error(f"Error parsing hypothesis {i}: Incomplete data. Raw response:\n{part}")
                 except Exception as e:
-                    st.error(f"Error parsing hypothesis {i}: {e}")
+                    st.error(f"Error parsing hypothesis {i}: {e}. Raw response:\n{part}")
             context_memory["hypotheses"] = hypotheses
             return hypotheses
         except Exception as e:
@@ -107,8 +104,8 @@ class RankingAgent:
     def _simulate_match(self, h1: Hypothesis, h2: Hypothesis) -> Hypothesis:
         prompt = (
             f"Compare these hypotheses: "
-            f"1) Hypothesis Statement: {h1.aim}, Description: {h1.objectives[0]}, Approach: {h1.algorithm}. "
-            f"2) Hypothesis Statement: {h2.aim}, Description: {h2.objectives[0]}, Approach: {h2.algorithm}. "
+            f"1) Hypothesis Statement: {h1.aim}, Description: {h1.objectives[0]}. "
+            f"2) Hypothesis Statement: {h2.aim}, Description: {h2.objectives[0]}. "
             "Which is better, 1 or 2?"
         )
         response = model.generate_content(prompt)
@@ -149,7 +146,7 @@ def display_hypotheses(hypotheses: List[Hypothesis]):
         st.write(f"**Hypothesis Statement:** {hypothesis.aim}")
         st.write(f"**Description:**")
         st.write(f"{hypothesis.objectives[0]}")
-        st.write(f"**Approach:** {hypothesis.algorithm}")
+        st.write(f"**Algorithm:** {hypothesis.algorithm}")
         st.write(f"**Novelty Score:** {hypothesis.novelty_score}")
         st.write(f"**Feasibility Score:** {hypothesis.feasibility_score}")
         st.write(f"**Safety Score:** {hypothesis.safety_score}")
