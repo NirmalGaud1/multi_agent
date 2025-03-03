@@ -196,3 +196,20 @@ def main():
     preferences = f"format: {output_format}"
 
     if st.button("Generate Hypotheses"):
+        research_goal = ResearchGoal(
+            goal=goal,
+            constraints=constraints,
+            preferences=preferences
+        )
+        try:
+            ranked_hypotheses = asyncio.run(main_workflow(research_goal))
+            if ranked_hypotheses:
+                st.write("### Ranked Hypotheses")
+                display_hypotheses(ranked_hypotheses)
+            else:
+                st.warning("No hypotheses generated. Please check your input and try again.")
+        except Exception as e:
+            st.error(f"An error occurred: {e}")
+
+if __name__ == "__main__":
+    main()
